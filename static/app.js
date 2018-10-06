@@ -1,110 +1,338 @@
-function buildMetadata(sample) {
+function loadsample(sample){
 
+    var url = `/sample/${sample}`;
 
-    // Reference to Panel element for sample metadata
+    Plotly.d3.json(url,function(error,response){
 
-    var PANEL = document.getElementById("sample-metadata");
+        if(error){ 
 
-    // Clear any existing metadata
-
-    PANEL.innerHTML = '';
-
-    // Loop through all of the keys in the json response and
-
-    // create new metadata tags
-
-    for(var key in data) {
-
-        h6tag = document.createElement("h6");
-
-        h6Text = document.createTextNode(`${key}: ${data[key]}`);
-
-        h6tag.append(h6Text);
-
-        PANEL.appendChild(h6tag);
-
-    }
-
-}
-
-function buildCharts(sample) {
-
-
-    // Loop through sample data and find the OTU Taxonomic Name
-
-    var labels = sample[0]['otu_ids'].map(function(item) {
-
-        return otuData[item]
-
-    });
-
-    // Build Bubble Chart
-
-    var bubbleLayout = {
-
-        margin: { t: 0 },
-
-        hovermode: 'closest',
-
-        xaxis: { title: 'OTU ID' }
-
-    };
-
-    var bubbleData = [{
-
-        x: sample[0]['otu_ids'],
-
-        y: sample[0]['sample_values'],
-
-        text: labels,
-
-        mode: 'markers',
-
-        marker: {
-
-            size: sample[0]['sample_values'],
-
-            color: sample[0]['otu_ids'],
-
-            colorscale: "Earth",
+            return console.warn(error);
 
         }
 
-    }];
+        populateBackground(response['personal']);
 
-    var BUBBLE = document.getElementById('bubble');
+        populatePieChart(response['otu_distribution'])
 
-    Plotly.plot(BUBBLE, bubbleData, bubbleLayout);
+        populateBubbleChart(response['otu_sample']);
 
-    // Build Pie Chart
+        populateGauge(response['washing_frequency']);
 
-    console.log(sample[0]['sample_values'].slice(0, 10))
+        console.log(response);
 
-    var pieData = [{
+    });
 
-        values: sample[0]['sample_values'].slice(0, 10),
+}
 
-        labels: sample[0]['otu_ids'].slice(0, 10),
 
-        hovertext: labels.slice(0, 10),
 
-        hoverinfo: 'hovertext',
+function populateBubbleChart(otu_sample_data){
 
-        type: 'pie'
+    console.log("tryyyyyyyyyyyyyyyyyyy bubble");
 
-    }];
+    console.log("test - > ",otu_sample_data['y'])
 
-    var pieLayout = {
+    console.log(d3.min(otu_sample_data['y']));
 
-        margin: { t: 0, l: 0 }
+    console.log(d3.max(otu_sample_data['y']));
 
-    };
 
-    var PIE = document.getElementById('pie');
 
-    Plotly.plot(PIE, pieData, pieLayout);
+    var radiusScale = d3.scaleSqrt();
 
-};
+
+
+    radiusScale.range([0,100]);
+
+
+
+    var rMin;
+
+    var rMax;
+
+    rMin = d3.min(otu_sample_data['y']);
+
+    rMax = d3.max(otu_sample_data['y']);
+
+
+
+    radiusScale.domain([rMin,rMax]);
+
+
+
+    console.log("Radius ->",otu_sample_data['y'].map(d=>radiusScale(parseInt(d))))
+
+      
+
+      var data = [{
+
+        y:otu_sample_data['y'].map(d=>d),
+
+        'mode':'markers',
+
+        'marker':{
+
+            size: otu_sample_data['y'].map(d=>radiusScale(parseInt(d))),
+
+            color: otu_sample_data['y'].map(d=>d)
+
+                  }
+
+      }];
+
+
+
+      console.log(data);
+
+      
+
+      var layout = {
+
+        title: 'Germs in the sample',
+
+        xaxis: {
+
+            title: "OTUs"
+
+          },
+
+          yaxis: {
+
+            title: "Intensity found in sample"
+
+          },
+
+      };
+
+
+
+      var bubbleDiv = document.querySelector('.otu-sample-bubble');
+
+      
+
+      Plotly.newPlot(bubbleDiv, data, layout);
+
+      
+
+
+
+
+
+}
+
+
+
+
+
+function populatePieChart(sample_otu_distribution){
+
+    console.log("Pie chart data");
+
+    sample_otu_distribution["type"] = "pie";
+
+    console.log(sample_otu_distribution);
+
+
+
+    var pieDiv = document.querySelector(".germs-pie")
+
+
+
+    var data = [sample_otu_distribution];
+
+    var layout = {
+
+        height: 400,
+
+        width: 500,
+
+        title: "Top 10 Operational Taxonomic Units <br> (OTU) found in this sample"
+
+      };
+
+      
+
+    Plotly.newPlot(pieDiv,data,layout);
+
+
+
+
+
+}
+
+
+
+function populateBackground(personal_data){
+
+    
+
+    console.log(personal_data);
+
+
+
+    var table = Plotly.d3.select("#personal-background");
+
+    var tbody = table.select("tbody");
+
+
+
+    var data_list = []
+
+
+
+    for(var key in personal_data){
+
+        var item = [key,personal_data[key]];
+
+        data_list.push(item);
+
+    }
+
+
+
+    var rows = tbody.selectAll('tr')
+
+    .data(data_list)
+
+    .enter()
+
+    .append('tr')
+
+    .html(function(d){
+
+        return `<td>${d[0]}</td><td>${d[1]}</td>`
+
+    })
+
+}
+
+
+
+function populateGauge(num){
+
+    if(!num){
+
+        num = 1;
+
+    }
+
+            var level = num*18;
+
+            // Trig to calc meter point
+
+            var degrees = level,
+
+                radius = .9;
+
+            var radians = degrees * Math.PI / 180;
+
+            var x = radius * Math.cos(radians);
+
+            var y = radius * Math.sin(radians);
+
+    
+
+            // Path: may have to change to create a better triangle
+
+            var mainPath = 'M -.0 -0.025 L .0 0.025 L ',
+
+                pathX = String(x),
+
+                space = ' ',
+
+                pathY = String(y),
+
+                pathEnd = ' Z';
+
+            var path = mainPath.concat(pathX,space,pathY,pathEnd);
+
+    
+
+            var data = [{ type: 'scatter',
+
+            x: [0], y:[0],
+
+                marker: {size: 10, color:'850000'},
+
+                showlegend: false,
+
+                name: 'speed',
+
+                text: level,
+
+                hoverinfo: 'text+name'},
+
+            { values: [50/5, 50/5, 50/5, 50/5, 50/5, 50],
+
+            rotation: 90,
+
+            text: ['0-2','3-4','5-6','7-8','9-10', ''],
+
+            textinfo: 'text',
+
+            textposition:'inside',
+
+            marker: {colors:['rgba(210, 206, 145, .5)','rgba(202, 209, 95, .5)','rgba(170, 202, 42, .5)', 'rgba(110, 154, 22, .5)',
+
+                                            'rgba(14, 127, 0, .5)', 'rgba(255, 255, 255, 0)']},
+
+            labels:['1-2','3-4','5-6','7-8','9-10', ''],
+
+            hoverinfo: 'label',
+
+            hole: .5,
+
+            type: 'pie',
+
+            showlegend: false
+
+            }];
+
+    
+
+            var layout = {
+
+            shapes:[{
+
+                type: 'path',
+
+                path: path,
+
+                fillcolor: '850000',
+
+                line: {
+
+                    color: '850000'
+
+                }
+
+                }],
+
+            title: 'Washing Frequency (0-10) per week',
+
+            height: 500,
+
+            width: 500,
+
+            xaxis: {zeroline:false, showticklabels:false,
+
+                        showgrid: false, range: [-1, 1]},
+
+            yaxis: {zeroline:false, showticklabels:false,
+
+                        showgrid: false, range: [-1, 1]}
+
+            };
+
+    
+
+            var gauge = document.querySelector('.washing-frequency');
+
+            Plotly.newPlot(gauge, data, layout);    
+
+}
+
+
 
 function init() {
   // Grab a reference to the dropdown select element
