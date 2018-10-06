@@ -334,31 +334,50 @@ function populateGauge(num){
 
 
 
-function init() {
-  // Grab a reference to the dropdown select element
-  var selector = d3.select("#selDataset");
 
-  // Use the list of sample names to populate the select options
-  d3.json("/names").then((sampleNames) => {
-    sampleNames.forEach((sample) => {
-      selector
-        .append("option")
-        .text(sample)
-        .property("value", sample);
-    });
 
-    // Use the first sample from the list to build the initial plots
-    const firstSample = sampleNames[0];
-    buildCharts(firstSample);
-    buildMetadata(firstSample);
-  });
-}
+Plotly.d3.json("/names",function(error,response){
 
-function optionChanged(newSample) {
-  // Fetch new data each time a new sample is selected
-  buildCharts(newSample);
-  buildMetadata(newSample);
-}
+    if(error){ 
 
-// Initialize the dashboard
-init();
+        return console.warn(error);
+
+    }
+
+
+
+    console.log(response);
+
+
+
+    Plotly.d3.select("#sample-select").append("option")
+
+    .attr("selected","true")
+
+    .attr("disabled","true")
+
+    .text("Select a sample");  
+
+
+
+    var names = Plotly.d3.select("#sample-select").selectAll("option").data(response);
+
+    names.enter()
+
+          .append("option")
+
+          .attr("value",d => d)
+
+          .text(d => d);
+
+    
+
+    Plotly.d3.select("#sample-select").on('change',function(){
+
+            var newData = this.options[this.selectedIndex].value;
+
+            loadsample(newData);
+
+          });
+
+});
