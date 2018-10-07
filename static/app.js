@@ -1,24 +1,32 @@
-function loadsample(sample){
+var url = "/names";
 
-    var url = `/sample/${sample}`;
+var otuIdList ;
 
-    Plotly.d3.json(url,function(error,response){
 
-        if(error){ 
 
-            return console.warn(error);
+function populateSampleName(){
 
-        }
-
-        populateBackground(response['personal']);
-
-        populatePieChart(response['otu_distribution'])
-
-        populateBubbleChart(response['otu_sample']);
-
-        populateGauge(response['washing_frequency']);
+    Plotly.d3.json(url, function(error, response) {
 
         console.log(response);
+
+        
+
+        var selDatasetSelect =   document.getElementById("selDataset")
+
+
+
+        for ( name in response){
+
+            var option = document.createElement("option");
+
+            option.value = response[name];
+
+            option.text = response[name];
+
+            selDatasetSelect.appendChild(option);
+
+        }       
 
     });
 
@@ -26,358 +34,224 @@ function loadsample(sample){
 
 
 
-function populateBubbleChart(otu_sample_data){
+function optionChanged(name){
 
-    console.log("tryyyyyyyyyyyyyyyyyyy bubble");
+    updateMetaData(name);
 
-    console.log("test - > ",otu_sample_data['y'])
+    generatePieChart(name);
 
-    console.log(d3.min(otu_sample_data['y']));
-
-    console.log(d3.max(otu_sample_data['y']));
-
-
-
-    var radiusScale = d3.scaleSqrt();
-
-
-
-    radiusScale.range([0,100]);
-
-
-
-    var rMin;
-
-    var rMax;
-
-    rMin = d3.min(otu_sample_data['y']);
-
-    rMax = d3.max(otu_sample_data['y']);
-
-
-
-    radiusScale.domain([rMin,rMax]);
-
-
-
-    console.log("Radius ->",otu_sample_data['y'].map(d=>radiusScale(parseInt(d))))
-
-      
-
-      var data = [{
-
-        y:otu_sample_data['y'].map(d=>d),
-
-        'mode':'markers',
-
-        'marker':{
-
-            size: otu_sample_data['y'].map(d=>radiusScale(parseInt(d))),
-
-            color: otu_sample_data['y'].map(d=>d)
-
-                  }
-
-      }];
-
-
-
-      console.log(data);
-
-      
-
-      var layout = {
-
-        title: 'Germs in the sample',
-
-        xaxis: {
-
-            title: "OTUs"
-
-          },
-
-          yaxis: {
-
-            title: "Intensity found in sample"
-
-          },
-
-      };
-
-
-
-      var bubbleDiv = document.querySelector('.otu-sample-bubble');
-
-      
-
-      Plotly.newPlot(bubbleDiv, data, layout);
-
-      
-
-
-
-
+    generateBubbleChart(name);
 
 }
 
 
 
+function updateMetaData(name){
 
+    var url = '/metadata/'+name
 
-function populatePieChart(sample_otu_distribution){
+    Plotly.d3.json(url, function(error, response) {
 
-    console.log("Pie chart data");
+        console.log(response);
 
-    sample_otu_distribution["type"] = "pie";
+       
 
-    console.log(sample_otu_distribution);
+        var metadataList =   document.getElementById("metadataList")
 
+        while (metadataList.firstChild) {
 
+            metadataList.removeChild(metadataList.firstChild);
 
-    var pieDiv = document.querySelector(".germs-pie")
-
-
-
-    var data = [sample_otu_distribution];
-
-    var layout = {
-
-        height: 400,
-
-        width: 500,
-
-        title: "Top 10 Operational Taxonomic Units <br> (OTU) found in this sample"
-
-      };
-
-      
-
-    Plotly.newPlot(pieDiv,data,layout);
+        }
 
 
 
+        
 
+        var y = document.createElement("LI");
+
+        var age = document.createTextNode("Age: " + response.AGE );
+
+        y.appendChild(age);
+
+        document.getElementById("metadataList").appendChild(y);
+
+
+
+        y = document.createElement("LI");
+
+        var bbType = document.createTextNode("BBTYPE: " + response.BBTYPE );
+
+        y.appendChild(bbType);
+
+        document.getElementById("metadataList").appendChild(y);
+
+
+
+        y = document.createElement("LI");
+
+        var ethicity = document.createTextNode("ETHNICITY: " + response.ETHNICITY );
+
+        y.appendChild(ethicity);
+
+        document.getElementById("metadataList").appendChild(y);
+
+        
+
+        y = document.createElement("LI");        
+
+        var gender = document.createTextNode("GENDER: " + response.GENDER );
+
+        y.appendChild(gender);
+
+        document.getElementById("metadataList").appendChild(y);
+
+
+
+        y = document.createElement("LI");
+
+        var location = document.createTextNode("LOCATION: " + response.LOCATION );
+
+        y.appendChild(location);
+
+        document.getElementById("metadataList").appendChild(y);
+
+
+
+        y = document.createElement("LI");
+
+        var sampleId = document.createTextNode("SAMPLEID: " + response.SAMPLEID );
+
+        y.appendChild(sampleId);
+
+        document.getElementById("metadataList").appendChild(y);        
+
+
+
+      });
 
 }
 
 
 
-function populateBackground(personal_data){
+function generatePieChart(name) {    
 
     
 
-    console.log(personal_data);
+    var url = "/samples/"+name
+
+    Plotly.d3.json(url, function(error, response) {
 
 
 
-    var table = Plotly.d3.select("#personal-background");
+        console.log(response);
 
-    var tbody = table.select("tbody");
+        var sampleData = response[0];
 
+        var data = [{
 
+            values: sampleData.sample_values.slice(0,9),
 
-    var data_list = []
-
-
-
-    for(var key in personal_data){
-
-        var item = [key,personal_data[key]];
-
-        data_list.push(item);
-
-    }
-
-
-
-    var rows = tbody.selectAll('tr')
-
-    .data(data_list)
-
-    .enter()
-
-    .append('tr')
-
-    .html(function(d){
-
-        return `<td>${d[0]}</td><td>${d[1]}</td>`
-
-    })
-
-}
-
-
-
-function populateGauge(num){
-
-    if(!num){
-
-        num = 1;
-
-    }
-
-            var level = num*18;
-
-            // Trig to calc meter point
-
-            var degrees = level,
-
-                radius = .9;
-
-            var radians = degrees * Math.PI / 180;
-
-            var x = radius * Math.cos(radians);
-
-            var y = radius * Math.sin(radians);
-
-    
-
-            // Path: may have to change to create a better triangle
-
-            var mainPath = 'M -.0 -0.025 L .0 0.025 L ',
-
-                pathX = String(x),
-
-                space = ' ',
-
-                pathY = String(y),
-
-                pathEnd = ' Z';
-
-            var path = mainPath.concat(pathX,space,pathY,pathEnd);
-
-    
-
-            var data = [{ type: 'scatter',
-
-            x: [0], y:[0],
-
-                marker: {size: 10, color:'850000'},
-
-                showlegend: false,
-
-                name: 'speed',
-
-                text: level,
-
-                hoverinfo: 'text+name'},
-
-            { values: [50/5, 50/5, 50/5, 50/5, 50/5, 50],
-
-            rotation: 90,
-
-            text: ['0-2','3-4','5-6','7-8','9-10', ''],
-
-            textinfo: 'text',
-
-            textposition:'inside',
-
-            marker: {colors:['rgba(210, 206, 145, .5)','rgba(202, 209, 95, .5)','rgba(170, 202, 42, .5)', 'rgba(110, 154, 22, .5)',
-
-                                            'rgba(14, 127, 0, .5)', 'rgba(255, 255, 255, 0)']},
-
-            labels:['1-2','3-4','5-6','7-8','9-10', ''],
-
-            hoverinfo: 'label',
-
-            hole: .5,
+            labels: sampleData.otu_ids.slice(0,9),
 
             type: 'pie',
 
-            showlegend: false
+            
 
-            }];
+          }];
 
-    
+          
 
-            var layout = {
+          var layout = {
 
-            shapes:[{
+            title: "OTU per Sample",
 
-                type: 'path',
+            yaxis: {
 
-                path: path,
+                autorange: true}
 
-                fillcolor: '850000',
 
-                line: {
 
-                    color: '850000'
+          };
 
-                }
 
-                }],
 
-            title: 'Washing Frequency (0-10) per week',
+        Plotly.newPlot("piePlot", data, layout);
 
-            height: 500,
-
-            width: 500,
-
-            xaxis: {zeroline:false, showticklabels:false,
-
-                        showgrid: false, range: [-1, 1]},
-
-            yaxis: {zeroline:false, showticklabels:false,
-
-                        showgrid: false, range: [-1, 1]}
-
-            };
+    });
 
     
-
-            var gauge = document.querySelector('.washing-frequency');
-
-            Plotly.newPlot(gauge, data, layout);    
 
 }
 
 
 
+function generateBubbleChart(name){
+
+    var url = "/samples/"+name
+
+    Plotly.d3.json(url, function(error, response) {
+
+        var sampleData = response[0];
+
+        var trace1 = {
+
+            x: sampleData.otu_ids,
+
+            y: sampleData.sample_values,
+
+            mode: 'markers',
+
+            marker: {
+
+              size: sampleData.sample_values,
+
+              color:sampleData.otu_ids              
+
+            }
+
+          };
+
+          
+
+          var data = [trace1];
+
+          
+
+          var layout = {
+
+           
+
+            title: 'OTU vs Sample_values',
+
+            showlegend: false,
+
+            yaxis: {
+
+                autorange: true}
+
+            
+
+          };
+
+          
+
+          Plotly.newPlot('bubblePlot', data, layout);
+
+    });
+
+}
 
 
-Plotly.d3.json("/names",function(error,response){
 
-    if(error){ 
+populateSampleName();
 
-        return console.warn(error);
-
-    }
-
-
-
-    console.log(response);
-
-
-
-    Plotly.d3.select("#sample-select").append("option")
-
-    .attr("selected","true")
-
-    .attr("disabled","true")
-
-    .text("Select a sample");  
-
-
-
-    var names = Plotly.d3.select("#sample-select").selectAll("option").data(response);
-
-    names.enter()
-
-          .append("option")
-
-          .attr("value",d => d)
-
-          .text(d => d);
+Plotly.d3.json('/otu', function(error, response) { 
 
     
 
-    Plotly.d3.select("#sample-select").on('change',function(){
+            otuIdList = response;
 
-            var newData = this.options[this.selectedIndex].value;
+    
 
-            loadsample(newData);
-
-          });
-
-});
+        });
