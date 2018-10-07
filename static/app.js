@@ -1,257 +1,119 @@
-var url = "/names";
+function updateMetaData(data) {
+    var PANEL = document.getElementById("sample-metadata");
+    PANEL.innerHTML = '';
+    // Loop through all of the keys in the json response and
+    for(var key in data) {
+        h6tag = document.createElement("h6");
+        h6Text = document.createTextNode(`${key}: ${data[key]}`);
+        h6tag.append(h6Text);
+        PANEL.appendChild(h6tag);
+    }
+}
 
-var otuIdList ;
-
-
-
-function populateSampleName(){
-
-    Plotly.d3.json(url, function(error, response) {
-
-        console.log(response);
-
-        
-
-        var selDatasetSelect =   document.getElementById("selDataset")
-
-
-
-        for ( name in response){
-
-            var option = document.createElement("option");
-
-            option.value = response[name];
-
-            option.text = response[name];
-
-            selDatasetSelect.appendChild(option);
-
-        }       
-
+function buildCharts(sampleData, otuData) {
+    // Loop through sample data and find the OTU Taxonomic Name
+    var labels = sampleData[0]['otu_ids'].map(function(item) {
+        return otuData[item]
     });
-
-}
-
-
-
-function optionChanged(name){
-
-    updateMetaData(name);
-
-    generatePieChart(name);
-
-    generateBubbleChart(name);
-
-}
-
-
-
-function updateMetaData(name){
-
-    var url = '/metadata/'+name
-
-    Plotly.d3.json(url, function(error, response) {
-
-        console.log(response);
-
-       
-
-        var metadataList =   document.getElementById("metadataList")
-
-        while (metadataList.firstChild) {
-
-            metadataList.removeChild(metadataList.firstChild);
-
+    // Build Bubble Chart
+    var bubbleLayout = {
+        margin: { t: 0 },
+        hovermode: 'closest',
+        xaxis: { title: 'OTU ID' }
+    };
+    var bubbleData = [{
+        x: sampleData[0]['otu_ids'],
+        y: sampleData[0]['sample_values'],
+        text: labels,
+        mode: 'markers',
+        marker: {
+            size: sampleData[0]['sample_values'],
+            color: sampleData[0]['otu_ids'],
+            colorscale: "Earth",
         }
-
-
-
-        
-
-        var y = document.createElement("LI");
-
-        var age = document.createTextNode("Age: " + response.AGE );
-
-        y.appendChild(age);
-
-        document.getElementById("metadataList").appendChild(y);
-
-
-
-        y = document.createElement("LI");
-
-        var bbType = document.createTextNode("BBTYPE: " + response.BBTYPE );
-
-        y.appendChild(bbType);
-
-        document.getElementById("metadataList").appendChild(y);
-
-
-
-        y = document.createElement("LI");
-
-        var ethicity = document.createTextNode("ETHNICITY: " + response.ETHNICITY );
-
-        y.appendChild(ethicity);
-
-        document.getElementById("metadataList").appendChild(y);
-
-        
-
-        y = document.createElement("LI");        
-
-        var gender = document.createTextNode("GENDER: " + response.GENDER );
-
-        y.appendChild(gender);
-
-        document.getElementById("metadataList").appendChild(y);
-
-
-
-        y = document.createElement("LI");
-
-        var location = document.createTextNode("LOCATION: " + response.LOCATION );
-
-        y.appendChild(location);
-
-        document.getElementById("metadataList").appendChild(y);
-
-
-
-        y = document.createElement("LI");
-
-        var sampleId = document.createTextNode("SAMPLEID: " + response.SAMPLEID );
-
-        y.appendChild(sampleId);
-
-        document.getElementById("metadataList").appendChild(y);        
-
-
-
-      });
-
-}
-
-
-
-function generatePieChart(name) {    
-
-    
-
-    var url = "/samples/"+name
-
-    Plotly.d3.json(url, function(error, response) {
-
-
-
-        console.log(response);
-
-        var sampleData = response[0];
-
-        var data = [{
-
-            values: sampleData.sample_values.slice(0,9),
-
-            labels: sampleData.otu_ids.slice(0,9),
-
-            type: 'pie',
-
-            
-
-          }];
-
-          
-
-          var layout = {
-
-            title: "OTU per Sample",
-
-            yaxis: {
-
-                autorange: true}
-
-
-
-          };
-
-
-
-        Plotly.newPlot("piePlot", data, layout);
-
+    }];
+    var BUBBLE = document.getElementById('bubble');
+    Plotly.plot(BUBBLE, bubbleData, bubbleLayout);
+    // Build Pie Chart
+    console.log(sampleData[0]['sample_values'].slice(0, 10))
+    var pieData = [{
+        values: sampleData[0]['sample_values'].slice(0, 10),
+        labels: sampleData[0]['otu_ids'].slice(0, 10),
+        hovertext: labels.slice(0, 10),
+        hoverinfo: 'hovertext',
+        type: 'pie'
+    }];
+    var pieLayout = {
+        margin: { t: 0, l: 0 }
+    };
+    var PIE = document.getElementById('pie');
+    Plotly.plot(PIE, pieData, pieLayout);
+};
+
+function updateCharts(sampleData, otuData) {
+    var sampleValues = sampleData[0]['sample_values'];
+    var otuIDs = sampleData[0]['otu_ids'];
+    // Return the OTU Description for each otuID in the dataset
+    var labels = otuIDs.map(function(item) {
+        return otuData[item]
     });
-
-    
-
+    // Update the Bubble Chart with the new data
+    var BUBBLE = document.getElementById('bubble');
+    Plotly.restyle(BUBBLE, 'x', [otuIDs]);
+    Plotly.restyle(BUBBLE, 'y', [sampleValues]);
+    Plotly.restyle(BUBBLE, 'text', [labels]);
+    Plotly.restyle(BUBBLE, 'marker.size', [sampleValues]);
+    Plotly.restyle(BUBBLE, 'marker.color', [otuIDs]);
+    // Update the Pie Chart with the new data
+    // Use slice to select only the top 10 OTUs for the pie chart
+    var PIE = document.getElementById('pie');
+    var pieUpdate = {
+        values: [sampleValues.slice(0, 10)],
+        labels: [otuIDs.slice(0, 10)],
+        hovertext: [labels.slice(0, 10)],
+        hoverinfo: 'hovertext',
+        type: 'pie'
+    };
+    Plotly.restyle(PIE, pieUpdate);
 }
 
-
-
-function generateBubbleChart(name){
-
-    var url = "/samples/"+name
-
-    Plotly.d3.json(url, function(error, response) {
-
-        var sampleData = response[0];
-
-        var trace1 = {
-
-            x: sampleData.otu_ids,
-
-            y: sampleData.sample_values,
-
-            mode: 'markers',
-
-            marker: {
-
-              size: sampleData.sample_values,
-
-              color:sampleData.otu_ids              
-
-            }
-
-          };
-
-          
-
-          var data = [trace1];
-
-          
-
-          var layout = {
-
-           
-
-            title: 'OTU vs Sample_values',
-
-            showlegend: false,
-
-            yaxis: {
-
-                autorange: true}
-
-            
-
-          };
-
-          
-
-          Plotly.newPlot('bubblePlot', data, layout);
-
-    });
-
-}
-
-
-
-populateSampleName();
-
-Plotly.d3.json('/otu', function(error, response) { 
-
-    
-
-            otuIdList = response;
-
-    
-
+function getData(sample, callback) {
+    // Use a request to grab the json data needed for all charts
+    Plotly.d3.json(`/samples/${sample}`, function(error, sampleData) {
+        if (error) return console.warn(error);
+        Plotly.d3.json('/otu', function(error, otuData) {
+            if (error) return console.warn(error);
+            callback(sampleData, otuData);
         });
+    });
+    Plotly.d3.json(`/metadata/${sample}`, function(error, metaData) {
+        if (error) return console.warn(error);
+        updateMetaData(metaData);
+    })
+    // BONUS - Build the Gauge Chart
+    buildGauge(sample);
+}
+
+function getOptions() {
+    // Grab a reference to the dropdown select element
+    var selDataset = document.getElementById('selDataset');
+    // Use the list of sample names to populate the select options
+    Plotly.d3.json('/names', function(error, sampleNames) {
+        for (var i = 0; i < sampleNames.length;  i++) {
+            var currentOption = document.createElement('option');
+            currentOption.text = sampleNames[i];
+            currentOption.value = sampleNames[i]
+            selDataset.appendChild(currentOption);
+        }
+        getData(sampleNames[0], buildCharts);
+    })
+}
+
+function optionChanged(newSample) {
+    // Fetch new data each time a new sample is selected
+    getData(newSample, updateCharts);
+}
+
+function init() {
+    getOptions();
+}
